@@ -15,9 +15,13 @@
   "type": "module",
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@types/multer": "^2.2.0",
+    "axios": "^1.19.0",
     "cloudinary": "^2.10.1",
+    "datauri": "^4.1.0",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "multer": "^2.2.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
