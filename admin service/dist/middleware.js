@@ -8,11 +8,13 @@ export const isAuth = async (req, res, next) => {
             res.status(403).json({
                 message: "Please Login",
             });
+            return;
         }
-        const { data } = await axios.get(`${process.env.User_URL}/api/v1/user/me`);
-        headers: {
-            token;
-        }
+        const { data } = await axios.get(`${process.env.User_URL}/api/v1/user/me`, {
+            headers: {
+                token,
+            },
+        });
         req.user = data;
         next();
     }
@@ -23,13 +25,7 @@ export const isAuth = async (req, res, next) => {
     }
 };
 import multer from "multer";
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/");
-    },
-    filename: (req, file, cb) => {
-        cb(null, file.originalname);
-    },
-});
-export const upload = multer({ storage });
+const storage = multer.memoryStorage();
+const uploadFile = multer({ storage }).single("file");
+export default uploadFile;
 //# sourceMappingURL=middleware.js.map

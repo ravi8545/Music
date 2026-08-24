@@ -25,13 +25,15 @@ export const isAuth = async (req: AuthenticatedRequest, res: Response, next: Nex
         if (!token) {
             res.status(403).json({
                 message: "Please Login",
-            })
+            });
+            return;
         }
 
-        const { data } = await axios.get(`${process.env.User_URL}/api/v1/user/me`)
-        headers: {
-            token
-        }
+        const { data } = await axios.get(`${process.env.User_URL}/api/v1/user/me`, {
+            headers: {
+                token,
+            },
+        });
         req.user = data;
         next();
     } catch (err) {
