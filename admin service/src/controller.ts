@@ -55,3 +55,102 @@ export const addAlbum = TryCatch(async (req: AuthencatedRequest, res) => {
   });
 });
 
+export const addSong = TryCatch(async (req: AuthencatedRequest, res) => {
+  if (req.user?.role !== "admin") {
+    res.status(401).json({
+      message: "You are not admin",
+    });
+    return;
+  }
+  const { title, description, album } = req.body;
+
+  const isAlbum = await sql`SELECT * FROM albums WHERE id = ${album}`;
+
+  if (isAlbum.length == 0) {
+    return res.status(404).json({
+      message: "No album with this id"
+    })
+  }
+
+
+  const file = req.file;
+
+  if (!file) {
+    res.status(400).json({
+      message: "No file to upload",
+    });
+    return;
+  }
+
+  const fileBuffer = getBuffer(file);
+
+  if (!fileBuffer || !fileBuffer.content) {
+    res.status(500).json({
+      message: "Failed to generate file buffer",
+    });
+    return;
+  }
+
+  const cloud = await cloudinary.v2.uploader.upload(fileBuffer.content, {
+    folder: "songs",
+    resource_type: "video"
+  });
+
+  const result = await sql`
+  INSERT INTO songs (title, description, audio, album_id) VALUES
+  (${title}, ${description}, ${cloud.secure_url}, ${album})
+  `
+  res.json({
+    message: "Song added"
+  })
+
+})
+
+export const addThumbnail = TryCatch(async (req: AuthencatedRequest, res) => {
+  if (req.user?.role !== "admin") {
+    res.status(401).json({
+      message: "You are not admin",
+    })
+    return;
+  }
+
+  const song = await sql`SELECT * FROM songs WHERE id = ${req.params.id}`;
+
+  if (song.length == 0) {
+    return res.status(404).json({
+      message: "No song with this id"
+    })
+  }
+
+  const file = req.file;
+
+  if (!file) {
+    res.status(400).json({
+      message: "No file to upload",
+    });
+    return;
+  }
+
+  const fileBuffer = getBuffer(file);
+
+  if (!fileBuffer || !fileBuffer.content) {
+    res.status(500).json({
+      message: "Failed to generate file buffer",
+    });
+    return;
+  }
+
+  const cloud = await cloudinary.v2.uploader.upload(fileBuffer.content)
+
+  const result = await sql`
+  UPDATE songs SET thumbnail = ${cloud.secure_url} WHERE id = ${req.params.id} RETURNING *
+  `;
+
+  res.json({
+    message:"Thumbnail added",
+    song:result[0]
+  })
+
+
+});
+
