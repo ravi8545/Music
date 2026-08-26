@@ -3,7 +3,20 @@ import dotenv from "dotenv";
 import { sql } from "./config/db.js";
 import adminRoutes from "./routes.js";
 import cloudinary from 'cloudinary';
+import redis from "redis";
 dotenv.config();
+export const redisClient = redis.createClient({
+    password: process.env.Redis_Password || "",
+    socket: {
+        host: "granular-line-pigs-42428.db.redis.io",
+        port: 18511
+    }
+});
+redisClient.connect().then(() => {
+    console.log("Redis connected successfully");
+}).catch((error) => {
+    console.log(error);
+});
 cloudinary.v2.config({
     cloud_name: process.env.Cloud_Name,
     api_key: process.env.Cloud_Api_Key,

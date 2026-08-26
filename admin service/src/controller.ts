@@ -3,6 +3,7 @@ import TryCatch from "./TryCatch.js";
 import getBuffer from "./config/dataUri.js";
 import cloudinary from "cloudinary";
 import { sql } from "./config/db.js";
+import { redisClient } from "./index.js";
 
 
 interface AuthencatedRequest extends Request {
@@ -47,6 +48,11 @@ export const addAlbum = TryCatch(async (req: AuthencatedRequest, res) => {
   const result = await sql`
    INSERT INTO albums (title, description, thumbnail) VALUES (${title}, ${description}, ${cloud.secure_url}) RETURNING *
   `;
+
+  if(redisClient.isReady){
+    await redisClient.del("albums");
+    console.log("cache invalidated for albums")
+  }
 
 
   res.json({
@@ -100,6 +106,12 @@ export const addSong = TryCatch(async (req: AuthencatedRequest, res) => {
   INSERT INTO songs (title, description, audio, album_id) VALUES
   (${title}, ${description}, ${cloud.secure_url}, ${album})
   `
+
+    if(redisClient.isReady){
+    await redisClient.del("songs");
+    console.log("cache invalidated for songs")
+  }
+
   res.json({
     message: "Song added"
   })

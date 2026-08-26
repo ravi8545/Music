@@ -2,6 +2,7 @@ import TryCatch from "./TryCatch.js";
 import getBuffer from "./config/dataUri.js";
 import cloudinary from "cloudinary";
 import { sql } from "./config/db.js";
+import { redisClient } from "./index.js";
 export const addAlbum = TryCatch(async (req, res) => {
     if (req.user?.role !== "admin") {
         res.status(401).json({
@@ -30,6 +31,10 @@ export const addAlbum = TryCatch(async (req, res) => {
     const result = await sql `
    INSERT INTO albums (title, description, thumbnail) VALUES (${title}, ${description}, ${cloud.secure_url}) RETURNING *
   `;
+    if (redisClient.isReady) {
+        await redisClient.del("albums");
+        console.log("cache invalidated for albums");
+    }
     res.json({
         message: "Album Created",
         album: result[0],
@@ -71,6 +76,10 @@ export const addSong = TryCatch(async (req, res) => {
   INSERT INTO songs (title, description, audio, album_id) VALUES
   (${title}, ${description}, ${cloud.secure_url}, ${album})
   `;
+    if (redisClient.isReady) {
+        await redisClient.del("songs");
+        console.log("cache invalidated for songs");
+    }
     res.json({
         message: "Song added"
     });
