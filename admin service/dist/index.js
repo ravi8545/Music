@@ -4,6 +4,7 @@ import { sql } from "./config/db.js";
 import adminRoutes from "./routes.js";
 import cloudinary from 'cloudinary';
 import redis from "redis";
+import cors from "cors";
 dotenv.config();
 export const redisClient = redis.createClient({
     password: process.env.Redis_Password || "",
@@ -11,6 +12,9 @@ export const redisClient = redis.createClient({
         host: "granular-line-pigs-42428.db.redis.io",
         port: 18511
     }
+});
+redisClient.on("error", (error) => {
+    console.error("Redis Client Error:", error.message);
 });
 redisClient.connect().then(() => {
     console.log("Redis connected successfully");
@@ -24,6 +28,7 @@ cloudinary.v2.config({
 });
 const app = express();
 app.use(express.json());
+app.use(cors());
 async function initDB() {
     try {
         await sql `

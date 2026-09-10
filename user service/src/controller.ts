@@ -68,3 +68,25 @@ export const myProfile=TryCatch(async (req: AuthenticatedRequest, res)=>{
     res.json(user);
 
 })
+
+export const saveToPlaylist = TryCatch(async (req: AuthenticatedRequest, res) => {
+    const user = await User.findById(req.user?._id);
+
+    if (!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
+    }
+
+    const songId = req.params.id as string;
+
+    if (user.playlist.includes(songId)) {
+        const index = user.playlist.indexOf(songId);
+        user.playlist.splice(index, 1);
+        await user.save();
+        res.json({ message: "Removed from playlist", playlist: user.playlist });
+    } else {
+        user.playlist.push(songId);
+        await user.save();
+        res.json({ message: "Added to playlist", playlist: user.playlist });
+    }
+});

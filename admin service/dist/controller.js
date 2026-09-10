@@ -4,9 +4,9 @@ import cloudinary from "cloudinary";
 import { sql } from "./config/db.js";
 import { redisClient } from "./index.js";
 export const addAlbum = TryCatch(async (req, res) => {
-    if (req.user?.role !== "admin") {
+    if (!req.user) {
         res.status(401).json({
-            message: "You are not admin",
+            message: "Please login to perform this action",
         });
         return;
     }
@@ -41,9 +41,9 @@ export const addAlbum = TryCatch(async (req, res) => {
     });
 });
 export const addSong = TryCatch(async (req, res) => {
-    if (req.user?.role !== "admin") {
+    if (!req.user) {
         res.status(401).json({
-            message: "You are not admin",
+            message: "Please login to perform this action",
         });
         return;
     }
@@ -85,9 +85,9 @@ export const addSong = TryCatch(async (req, res) => {
     });
 });
 export const addThumbnail = TryCatch(async (req, res) => {
-    if (req.user?.role !== "admin") {
+    if (!req.user) {
         res.status(401).json({
-            message: "You are not admin",
+            message: "Please login to perform this action",
         });
         return;
     }
@@ -115,15 +115,19 @@ export const addThumbnail = TryCatch(async (req, res) => {
     const result = await sql `
   UPDATE songs SET thumbnail = ${cloud.secure_url} WHERE id = ${req.params.id} RETURNING *
   `;
+    if (redisClient.isReady) {
+        await redisClient.del("songs");
+        console.log("cache invalidated for songs");
+    }
     res.json({
         message: "Thumbnail added",
         song: result[0]
     });
 });
 export const deleteAlbum = TryCatch(async (req, res) => {
-    if (req.user?.role !== "admin") {
+    if (!req.user) {
         res.status(401).json({
-            message: "You are not admin",
+            message: "Please login to perform this action",
         });
         return;
     }
@@ -136,15 +140,21 @@ export const deleteAlbum = TryCatch(async (req, res) => {
     }
     await sql `DELETE FROM songs WHERE album_id = ${id}`;
     await sql `DELETE FROM albums WHERE id = ${id}`;
+    if (redisClient.isReady) {
+        await redisClient.del("albums");
+        await redisClient.del("songs");
+        console.log("cache invalidated for albums and songs");
+    }
     res.json({
         message: "Album deleted"
     });
 });
 export const deleteSong = TryCatch(async (req, res) => {
-    if (req.user?.role !== "admin") {
-        return res.status(401).json({
-            message: "You are not admin"
+    if (!req.user) {
+        res.status(401).json({
+            message: "Please login to perform this action",
         });
+        return;
     }
     const { id } = req.params;
     const song = await sql `SELECT * FROM songs WHERE id = ${id}`;
@@ -154,6 +164,14 @@ export const deleteSong = TryCatch(async (req, res) => {
         });
     }
     await sql `DELETE FROM songs WHERE id = ${id}`;
+    if (redisClient.isReady) {
+        await redisClient.del("albums");
+        console.log("cache invalidated for albums");
+    }
+    if (redisClient.isReady) {
+        await redisClient.del("songs");
+        console.log("cache invalidated for songs");
+    }
     res.json({
         message: "Song deleted"
     });

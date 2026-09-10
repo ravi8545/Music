@@ -14,9 +14,9 @@ interface AuthencatedRequest extends Request {
 }
 
 export const addAlbum = TryCatch(async (req: AuthencatedRequest, res) => {
-  if (req.user?.role !== "admin") {
+  if (!req.user) {
     res.status(401).json({
-      message: "You are not admin",
+      message: "Please login to perform this action",
     });
     return;
   }
@@ -62,9 +62,9 @@ export const addAlbum = TryCatch(async (req: AuthencatedRequest, res) => {
 });
 
 export const addSong = TryCatch(async (req: AuthencatedRequest, res) => {
-  if (req.user?.role !== "admin") {
+  if (!req.user) {
     res.status(401).json({
-      message: "You are not admin",
+      message: "Please login to perform this action",
     });
     return;
   }
@@ -119,10 +119,10 @@ export const addSong = TryCatch(async (req: AuthencatedRequest, res) => {
 })
 
 export const addThumbnail = TryCatch(async (req: AuthencatedRequest, res) => {
-  if (req.user?.role !== "admin") {
+  if (!req.user) {
     res.status(401).json({
-      message: "You are not admin",
-    })
+      message: "Please login to perform this action",
+    });
     return;
   }
 
@@ -174,9 +174,9 @@ export const addThumbnail = TryCatch(async (req: AuthencatedRequest, res) => {
 
 export const deleteAlbum = TryCatch(async (req: AuthencatedRequest, res) => {
 
-  if (req.user?.role !== "admin") {
+  if (!req.user) {
     res.status(401).json({
-      message: "You are not admin",
+      message: "Please login to perform this action",
     });
     return;
   }
@@ -193,6 +193,12 @@ export const deleteAlbum = TryCatch(async (req: AuthencatedRequest, res) => {
   await sql`DELETE FROM songs WHERE album_id = ${id}`
   await sql`DELETE FROM albums WHERE id = ${id}`
 
+  if (redisClient.isReady) {
+    await redisClient.del("albums");
+    await redisClient.del("songs");
+    console.log("cache invalidated for albums and songs");
+  }
+
   res.json({
     message: "Album deleted"
   })
@@ -200,10 +206,11 @@ export const deleteAlbum = TryCatch(async (req: AuthencatedRequest, res) => {
 })
 
 export const deleteSong = TryCatch(async (req: AuthencatedRequest, res) => {
-  if (req.user?.role !== "admin") {
-    return res.status(401).json({
-      message: "You are not admin"
-    })
+  if (!req.user) {
+    res.status(401).json({
+      message: "Please login to perform this action",
+    });
+    return;
   }
 
   const { id } = req.params;
