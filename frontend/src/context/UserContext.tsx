@@ -12,6 +12,7 @@ interface UserContextType {
   loginUser: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logoutUser: () => void;
   saveToPlaylist: (songId: string | number) => Promise<void>;
+  clearAllPlaylist: () => Promise<void>;
   fetchUser: () => Promise<void>;
 }
 
@@ -118,6 +119,22 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const clearAllPlaylist = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      await axios.delete(`${USER_SERVICE_URL}/user/playlist`, {
+        headers: { token },
+      });
+      if (user) {
+        setUser({ ...user, playlist: [] });
+      }
+    } catch (error) {
+      console.error("Error clearing playlist:", error);
+    }
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -128,6 +145,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginUser,
         logoutUser,
         saveToPlaylist,
+        clearAllPlaylist,
         fetchUser,
       }}
     >

@@ -90,3 +90,16 @@ export const saveToPlaylist = TryCatch(async (req: AuthenticatedRequest, res) =>
         res.json({ message: "Added to playlist", playlist: user.playlist });
     }
 });
+
+export const clearPlaylist = TryCatch(async (req: AuthenticatedRequest, res) => {
+    const user = await User.findById(req.user?._id);
+
+    if (!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
+    }
+
+    user.playlist = [];
+    await user.save();
+    res.json({ message: "Playlist cleared", playlist: [] });
+});

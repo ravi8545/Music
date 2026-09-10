@@ -3,10 +3,10 @@ import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { useSong } from "../context/SongContext";
 import SongItem from "../components/SongItem";
-import { FiHeart, FiPlayCircle, FiLock } from "react-icons/fi";
+import { FiHeart, FiPlayCircle, FiLock, FiTrash2 } from "react-icons/fi";
 
 const Playlist: React.FC = () => {
-  const { user, isAuth } = useUser();
+  const { user, isAuth, clearAllPlaylist } = useUser();
   const { songs, playSong } = useSong();
 
   if (!isAuth || !user) {
@@ -54,12 +54,24 @@ const Playlist: React.FC = () => {
               {playlistSongs.length} Saved {playlistSongs.length === 1 ? "Track" : "Tracks"}
             </span>
             {playlistSongs.length > 0 && (
-              <button
-                onClick={() => playSong(playlistSongs[0], playlistSongs)}
-                className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-6 py-2.5 rounded-full flex items-center gap-2 transition shadow-lg shadow-emerald-500/20 cursor-pointer"
-              >
-                <FiPlayCircle className="text-xl" /> Play Playlist
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => playSong(playlistSongs[0], playlistSongs)}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-6 py-2.5 rounded-full flex items-center gap-2 transition shadow-lg shadow-emerald-500/20 cursor-pointer"
+                >
+                  <FiPlayCircle className="text-xl" /> Play Playlist
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to clear your entire playlist?")) {
+                      clearAllPlaylist();
+                    }
+                  }}
+                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-semibold px-4 py-2.5 rounded-full flex items-center gap-2 transition cursor-pointer text-xs"
+                >
+                  <FiTrash2 /> Clear Playlist
+                </button>
+              </div>
             )}
           </div>
         </div>
