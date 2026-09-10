@@ -200,19 +200,19 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // --- Admin API Handlers ---
-  const getAdminHeaders = () => {
-    const token = localStorage.getItem("token");
-    return { token };
-  };
+  const getToken = () => localStorage.getItem("token") || "";
 
   const addAlbum = async (formData: FormData) => {
     try {
       const { data } = await axios.post(`${ADMIN_SERVICE_URL}/album/new`, formData, {
-        headers: getAdminHeaders(),
+        headers: {
+          token: getToken(),
+        },
       });
       await fetchAlbums();
       return { success: true, message: data.message };
     } catch (error: any) {
+      console.error("addAlbum error:", error.response?.data || error.message);
       return { success: false, message: error.response?.data?.message || "Failed to add album" };
     }
   };
@@ -220,11 +220,14 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addSong = async (formData: FormData) => {
     try {
       const { data } = await axios.post(`${ADMIN_SERVICE_URL}/song/new`, formData, {
-        headers: getAdminHeaders(),
+        headers: {
+          token: getToken(),
+        },
       });
       await fetchSongs();
       return { success: true, message: data.message };
     } catch (error: any) {
+      console.error("addSong error:", error.response?.data || error.message);
       return { success: false, message: error.response?.data?.message || "Failed to add song" };
     }
   };
@@ -232,11 +235,14 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addThumbnail = async (songId: string | number, formData: FormData) => {
     try {
       const { data } = await axios.post(`${ADMIN_SERVICE_URL}/song/${songId}`, formData, {
-        headers: getAdminHeaders(),
+        headers: {
+          token: getToken(),
+        },
       });
       await fetchSongs();
       return { success: true, message: data.message };
     } catch (error: any) {
+      console.error("addThumbnail error:", error.response?.data || error.message);
       return { success: false, message: error.response?.data?.message || "Failed to add thumbnail" };
     }
   };
@@ -244,11 +250,14 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteAlbum = async (id: string | number) => {
     try {
       const { data } = await axios.delete(`${ADMIN_SERVICE_URL}/album/${id}`, {
-        headers: getAdminHeaders(),
+        headers: {
+          token: getToken(),
+        },
       });
       await Promise.all([fetchAlbums(), fetchSongs()]);
       return { success: true, message: data.message };
     } catch (error: any) {
+      console.error("deleteAlbum error:", error.response?.data || error.message);
       return { success: false, message: error.response?.data?.message || "Failed to delete album" };
     }
   };
@@ -256,11 +265,14 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteSong = async (id: string | number) => {
     try {
       const { data } = await axios.delete(`${ADMIN_SERVICE_URL}/song/${id}`, {
-        headers: getAdminHeaders(),
+        headers: {
+          token: getToken(),
+        },
       });
       await fetchSongs();
       return { success: true, message: data.message };
     } catch (error: any) {
+      console.error("deleteSong error:", error.response?.data || error.message);
       return { success: false, message: error.response?.data?.message || "Failed to delete song" };
     }
   };

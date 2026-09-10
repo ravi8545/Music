@@ -38,15 +38,15 @@ const Admin: React.FC = () => {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (user?.role !== "admin") {
+  if (!user) {
     return (
       <div className="flex flex-col items-center justify-center h-80 bg-[#181818] rounded-2xl border border-white/5 p-8 text-center gap-4 max-w-md mx-auto my-12">
         <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center text-3xl">
           <FiShield />
         </div>
-        <h2 className="text-2xl font-bold text-white">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-white">Login Required</h2>
         <p className="text-gray-400 text-sm">
-          You must be logged in as an administrator to access the upload and management dashboard.
+          Please log in to access the upload and management dashboard.
         </p>
       </div>
     );
