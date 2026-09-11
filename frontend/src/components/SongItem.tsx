@@ -118,6 +118,26 @@ const SongItem: React.FC<SongItemProps> = ({ song, index, queue }) => {
             <FiInfo className="text-base" />
           </button>
 
+          {/* Save / Remove Playlist */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isAuth) {
+                saveToPlaylist(song.id);
+              } else {
+                alert("Please log in to save songs to your personal playlist!");
+              }
+            }}
+            className="p-1.5 text-gray-400 hover:text-pink-500 transition cursor-pointer"
+            title={isAuth ? (isLiked ? "Remove from Playlist" : "Save to Playlist") : "Login to save to playlist"}
+          >
+            {isLiked ? (
+              <FaHeart className="text-pink-500 text-base" />
+            ) : (
+              <FiHeart className="text-base group-hover:opacity-100 opacity-60" />
+            )}
+          </button>
+
           {isAuth && (
             <>
               {/* Upload Thumbnail (POST /song/:id) */}
@@ -130,22 +150,6 @@ const SongItem: React.FC<SongItemProps> = ({ song, index, queue }) => {
                 title="Upload Song Thumbnail (POST /song/:id)"
               >
                 <FiImage className="text-base" />
-              </button>
-
-              {/* Save / Remove Playlist (POST /user/song/:id) */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  saveToPlaylist(song.id);
-                }}
-                className="p-1.5 text-gray-400 hover:text-pink-500 transition cursor-pointer"
-                title={isLiked ? "Remove from Playlist" : "Save to Playlist"}
-              >
-                {isLiked ? (
-                  <FaHeart className="text-pink-500 text-base" />
-                ) : (
-                  <FiHeart className="text-base group-hover:opacity-100 opacity-60" />
-                )}
               </button>
 
               {/* Delete Song (DELETE /song/:id) */}

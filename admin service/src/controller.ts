@@ -99,7 +99,7 @@ export const addSong = TryCatch(async (req: AuthencatedRequest, res) => {
 
   const cloud = await cloudinary.v2.uploader.upload(fileBuffer.content, {
     folder: "songs",
-    resource_type: "video"
+    resource_type: "auto"
   });
 
   const result = await sql`

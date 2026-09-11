@@ -15,8 +15,9 @@ const AlbumDetails: React.FC = () => {
   const [showAddSong, setShowAddSong] = useState(false);
   const [songTitle, setSongTitle] = useState("");
   const [songDesc, setSongDesc] = useState("");
-  const [songFile, setSongFile] = useState<File | null>(null);
+  const [songFiles, setSongFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -45,23 +46,39 @@ const AlbumDetails: React.FC = () => {
 
   const handleAddSongSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!songFile || !album.id) return;
+    if (songFiles.length === 0 || !album.id) return;
     setUploading(true);
 
-    const formData = new FormData();
-    formData.append("title", songTitle);
-    formData.append("description", songDesc);
-    formData.append("album", String(album.id));
-    formData.append("file", songFile);
+    let success = true;
+    for (let i = 0; i < songFiles.length; i++) {
+      const file = songFiles[i];
+      setUploadProgress({ current: i + 1, total: songFiles.length });
 
-    const res = await addSong(formData);
+      let titleToUse = songTitle.trim();
+      if (!titleToUse) {
+        titleToUse = file.name.replace(/\.[^/.]+$/, "");
+      } else if (songFiles.length > 1) {
+        titleToUse = `${songTitle.trim()} (Part ${i + 1})`;
+      }
+
+      const formData = new FormData();
+      formData.append("title", titleToUse);
+      formData.append("description", songDesc || "Album Track");
+      formData.append("album", String(album.id));
+      formData.append("file", file);
+
+      const res = await addSong(formData);
+      if (!res.success) success = false;
+    }
+
     setUploading(false);
+    setUploadProgress(null);
 
-    if (res.success) {
+    if (success) {
       setShowAddSong(false);
       setSongTitle("");
       setSongDesc("");
-      setSongFile(null);
+      setSongFiles([]);
       if (id) fetchAlbumDetails(id);
     }
   };
@@ -196,15 +213,30 @@ const AlbumDetails: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-300">Audio File (.mp3, .wav)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-gray-300">Audio Files (.mp3, .wav) - Select multiple songs</label>
+                  {songFiles.length > 0 && (
+                    <span className="text-xs text-emerald-400 font-medium">
+                      {songFiles.length} file(s)
+                    </span>
+                  )}
+                </div>
                 <input
                   type="file"
                   accept="audio/*"
+                  multiple
                   required
-                  onChange={(e) => setSongFile(e.target.files?.[0] || null)}
+                  onChange={(e) => setSongFiles(Array.from(e.target.files || []))}
                   className="bg-[#121212] border border-white/10 rounded-xl p-2 text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500 file:text-black cursor-pointer"
                 />
               </div>
+
+              {uploadProgress && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-2.5 rounded-xl text-xs flex items-center justify-between font-medium">
+                  <span>Uploading track {uploadProgress.current} of {uploadProgress.total}...</span>
+                  <span>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 mt-2">
                 <button
@@ -219,7 +251,7 @@ const AlbumDetails: React.FC = () => {
                   disabled={uploading}
                   className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  <FiUpload /> {uploading ? "Uploading..." : "Upload Song"}
+                  <FiUpload /> {uploading ? `Uploading (${uploadProgress ? `${uploadProgress.current}/${uploadProgress.total}` : "Processing..."})` : `Upload ${songFiles.length > 1 ? `${songFiles.length} Songs` : "Song"}`}
                 </button>
               </div>
             </form>

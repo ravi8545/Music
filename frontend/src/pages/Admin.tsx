@@ -28,7 +28,8 @@ const Admin: React.FC = () => {
   const [songTitle, setSongTitle] = useState("");
   const [songDesc, setSongDesc] = useState("");
   const [songAlbumId, setSongAlbumId] = useState("");
-  const [songFile, setSongFile] = useState<File | null>(null);
+  const [songFiles, setSongFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; filename: string } | null>(null);
 
   // Song thumbnail modal state
   const [thumbSongId, setThumbSongId] = useState<number | null>(null);
@@ -82,34 +83,61 @@ const Admin: React.FC = () => {
 
   const handleSongSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!songFile) {
-      setMessage({ type: "error", text: "Please select an audio file." });
+    if (songFiles.length === 0) {
+      setMessage({ type: "error", text: "Please select at least one audio file." });
       return;
     }
     if (!songAlbumId) {
-      setMessage({ type: "error", text: "Please select an album for this song." });
+      setMessage({ type: "error", text: "Please select an album for the song(s)." });
       return;
     }
 
     setSubmitting(true);
     setMessage(null);
 
-    const formData = new FormData();
-    formData.append("title", songTitle);
-    formData.append("description", songDesc);
-    formData.append("album", songAlbumId);
-    formData.append("file", songFile);
+    let successCount = 0;
+    let failCount = 0;
 
-    const res = await addSong(formData);
+    for (let i = 0; i < songFiles.length; i++) {
+      const file = songFiles[i];
+      setUploadProgress({ current: i + 1, total: songFiles.length, filename: file.name });
+
+      // Determine track title
+      let titleToUse = songTitle.trim();
+      if (!titleToUse) {
+        // Strip extension
+        titleToUse = file.name.replace(/\.[^/.]+$/, "");
+      } else if (songFiles.length > 1) {
+        titleToUse = `${songTitle.trim()} (Part ${i + 1})`;
+      }
+
+      const formData = new FormData();
+      formData.append("title", titleToUse);
+      formData.append("description", songDesc || "Album Track");
+      formData.append("album", songAlbumId);
+      formData.append("file", file);
+
+      const res = await addSong(formData);
+      if (res.success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
     setSubmitting(false);
+    setUploadProgress(null);
 
-    if (res.success) {
-      setMessage({ type: "success", text: res.message || "Song added successfully!" });
+    if (failCount === 0) {
+      setMessage({ type: "success", text: `Successfully uploaded ${successCount} song(s) to album!` });
       setSongTitle("");
       setSongDesc("");
-      setSongFile(null);
+      setSongFiles([]);
     } else {
-      setMessage({ type: "error", text: res.message || "Failed to add song." });
+      setMessage({
+        type: "error",
+        text: `Uploaded ${successCount} song(s), but ${failCount} song(s) failed.`,
+      });
     }
   };
 
@@ -275,22 +303,54 @@ const Admin: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-300">Audio File (.mp3, .wav)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-gray-300">Audio Files (.mp3, .wav) - Select multiple songs</label>
+                  {songFiles.length > 0 && (
+                    <span className="text-xs text-emerald-400 font-medium">
+                      {songFiles.length} file(s) selected
+                    </span>
+                  )}
+                </div>
                 <input
                   type="file"
                   accept="audio/*"
+                  multiple
                   required
-                  onChange={(e) => setSongFile(e.target.files?.[0] || null)}
+                  onChange={(e) => setSongFiles(Array.from(e.target.files || []))}
                   className="bg-[#121212] border border-white/10 rounded-xl p-2 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500 file:text-black hover:file:bg-emerald-400 cursor-pointer"
                 />
               </div>
+
+              {/* Selected Files Badge List */}
+              {songFiles.length > 0 && (
+                <div className="bg-[#121212] p-3 rounded-xl border border-white/5 flex flex-col gap-1 max-h-32 overflow-y-auto text-xs text-gray-300">
+                  <span className="font-bold text-gray-400 text-[11px]">Selected Tracks:</span>
+                  {songFiles.map((file, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-0.5 border-b border-white/5 last:border-0">
+                      <span className="truncate">{file.name}</span>
+                      <span className="text-gray-500 text-[10px]">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Progress Status */}
+              {uploadProgress && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-3 rounded-xl text-xs flex flex-col gap-1">
+                  <div className="flex items-center justify-between font-bold">
+                    <span>Uploading track {uploadProgress.current} of {uploadProgress.total}...</span>
+                    <span>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 truncate">{uploadProgress.filename}</p>
+                </div>
+              )}
 
               <button
                 type="submit"
                 disabled={submitting}
                 className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-500/20 mt-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <FiUpload /> {submitting ? "Uploading Song..." : "Add Song to Catalog"}
+                <FiUpload /> {submitting ? `Uploading (${uploadProgress ? `${uploadProgress.current}/${uploadProgress.total}` : "Processing..."})` : `Upload ${songFiles.length > 1 ? `${songFiles.length} Songs` : "Song"} to Album`}
               </button>
             </form>
           )}
