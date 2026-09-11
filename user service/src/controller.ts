@@ -23,7 +23,7 @@ export const registerUser = TryCatch(async (req, res) => {
         password: hashPassword,
     });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: "1h" });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: "30d" });
 
     res.status(201).json({
         message: "User registered successfully",
@@ -53,7 +53,7 @@ export const loginUser = TryCatch(async (req, res)=>{
         return;
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: "1h" });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: "30d" });
 
     res.status(200).json({
         message: "User logged in successfully",

@@ -32,6 +32,7 @@ interface SongContextType {
   // Admin Operations
   addAlbum: (formData: FormData) => Promise<{ success: boolean; message?: string }>;
   addSong: (formData: FormData) => Promise<{ success: boolean; message?: string }>;
+  addBulkSongs: (formData: FormData) => Promise<{ success: boolean; message?: string }>;
   addThumbnail: (songId: string | number, formData: FormData) => Promise<{ success: boolean; message?: string }>;
   deleteAlbum: (id: string | number) => Promise<{ success: boolean; message?: string }>;
   deleteSong: (id: string | number) => Promise<{ success: boolean; message?: string }>;
@@ -232,6 +233,21 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const addBulkSongs = async (formData: FormData) => {
+    try {
+      const { data } = await axios.post(`${ADMIN_SERVICE_URL}/songs/bulk`, formData, {
+        headers: {
+          token: getToken(),
+        },
+      });
+      await fetchSongs();
+      return { success: true, message: data.message };
+    } catch (error: any) {
+      console.error("addBulkSongs error:", error.response?.data || error.message);
+      return { success: false, message: error.response?.data?.message || "Failed to add songs" };
+    }
+  };
+
   const addThumbnail = async (songId: string | number, formData: FormData) => {
     try {
       const { data } = await axios.post(`${ADMIN_SERVICE_URL}/song/${songId}`, formData, {
@@ -302,6 +318,7 @@ export const SongProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setVolumeLevel,
         addAlbum,
         addSong,
+        addBulkSongs,
         addThumbnail,
         deleteAlbum,
         deleteSong,

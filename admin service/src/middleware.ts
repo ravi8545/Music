@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import axios from 'axios'
 import dotenv from "dotenv"
+import multer from "multer"
 
 dotenv.config();
 
@@ -44,21 +45,16 @@ export const isAuth = async (req: AuthenticatedRequest, res: Response, next: Nex
 
         req.user = data;
         next();
-    } catch (err) {
+    } catch (err: any) {
         res.status(401).json({
             message: "Authentication failed. Please login to perform this action.",
         });
     }
 }
 
-import multer from "multer"
+const storage = multer.memoryStorage();
 
-
-const storage = multer.memoryStorage()
-
-
-const uploadFile = multer({storage}).single("file")
+export const uploadFile = multer({ storage }).single("file");
+export const uploadMultipleFiles = multer({ storage }).array("files", 25);
 
 export default uploadFile;
-
-

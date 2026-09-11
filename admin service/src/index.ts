@@ -42,8 +42,8 @@ async function initDB() {
         CREATE TABLE IF NOT EXISTS albums(
           id SERIAL PRIMARY KEY,
           title VARCHAR(255) NOT NULL,
-          description VARCHAR(255) NOT NULL,
-          thumbnail VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          thumbnail TEXT NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         `;
@@ -52,13 +52,24 @@ async function initDB() {
         CREATE TABLE IF NOT EXISTS songs(
           id SERIAL PRIMARY KEY,
           title VARCHAR(255) NOT NULL,
-          description VARCHAR(255) NOT NULL,
-          thumbnail VARCHAR(255),
-          audio VARCHAR(255) NOT NULL,
+          description TEXT NOT NULL,
+          thumbnail TEXT,
+          audio TEXT NOT NULL,
           album_id INTEGER REFERENCES albums(id) ON DELETE SET NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         `;
+
+    // Alter existing columns from VARCHAR(255) to TEXT if table already exists
+    try {
+      await sql`ALTER TABLE albums ALTER COLUMN description TYPE TEXT`;
+      await sql`ALTER TABLE albums ALTER COLUMN thumbnail TYPE TEXT`;
+      await sql`ALTER TABLE songs ALTER COLUMN description TYPE TEXT`;
+      await sql`ALTER TABLE songs ALTER COLUMN thumbnail TYPE TEXT`;
+      await sql`ALTER TABLE songs ALTER COLUMN audio TYPE TEXT`;
+    } catch (alterErr) {
+      // Columns may already be TEXT, ignore errors
+    }
 
     console.log("Database initialized successfully");
   } catch (error) {

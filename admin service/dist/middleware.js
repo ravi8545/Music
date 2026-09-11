@@ -1,5 +1,6 @@
 import axios from 'axios';
 import dotenv from "dotenv";
+import multer from "multer";
 dotenv.config();
 export const isAuth = async (req, res, next) => {
     try {
@@ -30,8 +31,8 @@ export const isAuth = async (req, res, next) => {
         });
     }
 };
-import multer from "multer";
 const storage = multer.memoryStorage();
-const uploadFile = multer({ storage }).single("file");
+export const uploadFile = multer({ storage }).single("file");
+export const uploadMultipleFiles = multer({ storage }).array("files", 25);
 export default uploadFile;
 //# sourceMappingURL=middleware.js.map

@@ -83,7 +83,8 @@ export const getAllSongsOfAlbum = TryCatch(async (req, res) => {
     if (album.length === 0) {
         res.status(404).json({
             message: "No album with this id"
-        })
+        });
+        return;
     }
 
     songs = await sql`SELECT * FROM songs WHERE album_id = ${id}`;

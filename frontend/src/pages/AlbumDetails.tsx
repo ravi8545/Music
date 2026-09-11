@@ -3,21 +3,37 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useSong } from "../context/SongContext";
 import { useUser } from "../context/UserContext";
 import SongItem from "../components/SongItem";
-import { FiPlayCircle, FiClock, FiMusic, FiTrash2, FiPlusCircle, FiX, FiUpload } from "react-icons/fi";
+import {
+  FiPlayCircle,
+  FiClock,
+  FiMusic,
+  FiTrash2,
+  FiPlusCircle,
+  FiX,
+  FiUpload,
+  FiAlertCircle,
+  FiCheckCircle,
+} from "react-icons/fi";
+
+interface TrackItem {
+  file: File;
+  title: string;
+}
 
 const AlbumDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { selectedAlbum, fetchAlbumDetails, playSong, deleteAlbum, addSong } = useSong();
+  const { selectedAlbum, fetchAlbumDetails, playSong, deleteAlbum, addSong, addBulkSongs } = useSong();
   const { isAuth } = useUser();
 
   // Add Song Modal State
   const [showAddSong, setShowAddSong] = useState(false);
   const [songTitle, setSongTitle] = useState("");
   const [songDesc, setSongDesc] = useState("");
-  const [songFiles, setSongFiles] = useState<File[]>([]);
+  const [songTracks, setSongTracks] = useState<TrackItem[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -44,42 +60,92 @@ const AlbumDetails: React.FC = () => {
     }
   };
 
+  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const items: TrackItem[] = files.map((file) => ({
+      file,
+      title: file.name.replace(/\.[^/.]+$/, "").trim(),
+    }));
+    setSongTracks(items);
+    if (items.length === 1 && !songTitle) {
+      setSongTitle(items[0].title);
+    }
+  };
+
+  const handleUpdateTrackTitle = (index: number, newTitle: string) => {
+    setSongTracks((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], title: newTitle };
+      return copy;
+    });
+  };
+
+  const handleRemoveTrack = (index: number) => {
+    setSongTracks((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleAddSongSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (songFiles.length === 0 || !album.id) return;
-    setUploading(true);
-
-    let success = true;
-    for (let i = 0; i < songFiles.length; i++) {
-      const file = songFiles[i];
-      setUploadProgress({ current: i + 1, total: songFiles.length });
-
-      let titleToUse = songTitle.trim();
-      if (!titleToUse) {
-        titleToUse = file.name.replace(/\.[^/.]+$/, "");
-      } else if (songFiles.length > 1) {
-        titleToUse = `${songTitle.trim()} (Part ${i + 1})`;
-      }
-
-      const formData = new FormData();
-      formData.append("title", titleToUse);
-      formData.append("description", songDesc || "Album Track");
-      formData.append("album", String(album.id));
-      formData.append("file", file);
-
-      const res = await addSong(formData);
-      if (!res.success) success = false;
+    if (songTracks.length === 0 || !album.id) {
+      setUploadError("Please select at least one audio file.");
+      return;
     }
+    setUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
 
-    setUploading(false);
-    setUploadProgress(null);
+    try {
+      if (songTracks.length === 1) {
+        const track = songTracks[0];
+        const titleToUse = songTitle.trim() || track.title;
 
-    if (success) {
-      setShowAddSong(false);
-      setSongTitle("");
-      setSongDesc("");
-      setSongFiles([]);
-      if (id) fetchAlbumDetails(id);
+        const formData = new FormData();
+        formData.append("title", titleToUse);
+        formData.append("description", songDesc || "Album Track");
+        formData.append("album", String(album.id));
+        formData.append("file", track.file);
+
+        const res = await addSong(formData);
+        if (res.success) {
+          setUploadSuccess(`Added "${titleToUse}" successfully!`);
+          setTimeout(() => {
+            setShowAddSong(false);
+            setSongTitle("");
+            setSongDesc("");
+            setSongTracks([]);
+            setUploadSuccess(null);
+          }, 1200);
+          if (id) fetchAlbumDetails(id);
+        } else {
+          setUploadError(res.message || "Failed to add song.");
+        }
+      } else {
+        const formData = new FormData();
+        formData.append("album", String(album.id));
+        formData.append("description", songDesc || "Album Track");
+        formData.append("titles", JSON.stringify(songTracks.map((t) => t.title)));
+        songTracks.forEach((t) => formData.append("files", t.file));
+
+        const res = await addBulkSongs(formData);
+        if (res.success) {
+          setUploadSuccess(`Added ${songTracks.length} songs to "${album.title}"!`);
+          setTimeout(() => {
+            setShowAddSong(false);
+            setSongTitle("");
+            setSongDesc("");
+            setSongTracks([]);
+            setUploadSuccess(null);
+          }, 1200);
+          if (id) fetchAlbumDetails(id);
+        } else {
+          setUploadError(res.message || "Failed to add songs.");
+        }
+      }
+    } catch (err: any) {
+      setUploadError(err.message || "An unexpected error occurred during upload.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -121,17 +187,21 @@ const AlbumDetails: React.FC = () => {
             {isAuth && (
               <>
                 <button
-                  onClick={() => setShowAddSong(true)}
+                  onClick={() => {
+                    setShowAddSong(true);
+                    setUploadError(null);
+                    setUploadSuccess(null);
+                  }}
                   className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold px-4 py-2 rounded-full flex items-center gap-1.5 transition text-xs border border-white/10 cursor-pointer"
-                  title="Add new song to this album (POST /song/new)"
+                  title="Add songs to this album"
                 >
-                  <FiPlusCircle className="text-emerald-400" /> Add Song
+                  <FiPlusCircle className="text-emerald-400" /> Add Songs
                 </button>
 
                 <button
                   onClick={handleDeleteAlbum}
                   className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-full flex items-center gap-1.5 transition text-xs font-semibold cursor-pointer"
-                  title="Delete Album (DELETE /album/:id)"
+                  title="Delete Album"
                 >
                   <FiTrash2 /> Delete Album
                 </button>
@@ -162,7 +232,11 @@ const AlbumDetails: React.FC = () => {
             <p>No tracks in this album yet.</p>
             {isAuth && (
               <button
-                onClick={() => setShowAddSong(true)}
+                onClick={() => {
+                  setShowAddSong(true);
+                  setUploadError(null);
+                  setUploadSuccess(null);
+                }}
                 className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-4 py-2 rounded-full text-xs transition"
               >
                 + Add First Song
@@ -172,10 +246,10 @@ const AlbumDetails: React.FC = () => {
         )}
       </div>
 
-      {/* Add Song Modal for this Album (POST /song/new) */}
+      {/* Add Song Modal for this Album */}
       {showAddSong && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#181818] border border-white/10 p-6 rounded-2xl max-w-md w-full flex flex-col gap-4 shadow-2xl relative">
+          <div className="bg-[#181818] border border-white/10 p-6 rounded-2xl max-w-lg w-full flex flex-col gap-4 shadow-2xl relative">
             <button
               onClick={() => setShowAddSong(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-white text-lg"
@@ -184,40 +258,60 @@ const AlbumDetails: React.FC = () => {
             </button>
 
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <FiPlusCircle className="text-emerald-400" /> Add Song to "{album.title}"
+              <FiPlusCircle className="text-emerald-400" /> Add Songs to "{album.title}"
             </h3>
+
+            {uploadError && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs flex items-center gap-2">
+                <FiAlertCircle />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
+            {uploadSuccess && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-xl text-xs flex items-center gap-2">
+                <FiCheckCircle />
+                <span>{uploadSuccess}</span>
+              </div>
+            )}
 
             <form onSubmit={handleAddSongSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-300">Song Title</label>
+                <label className="text-xs font-semibold text-gray-300">Artist / Description</label>
                 <input
                   type="text"
-                  required
-                  value={songTitle}
-                  onChange={(e) => setSongTitle(e.target.value)}
-                  placeholder="e.g. Summer Breeze"
-                  className="bg-[#121212] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-300">Description / Artist</label>
-                <input
-                  type="text"
-                  required
                   value={songDesc}
                   onChange={(e) => setSongDesc(e.target.value)}
-                  placeholder="e.g. Acoustic Version"
+                  placeholder="e.g. Acoustic Version / Artist Name"
                   className="bg-[#121212] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
+              {/* Single Song Title (if 1 or no track selected) */}
+              {songTracks.length <= 1 && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-gray-300">
+                    Song Title {songTracks.length === 1 ? "(auto-detected from file name)" : "*"}
+                  </label>
+                  <input
+                    type="text"
+                    value={songTitle}
+                    onChange={(e) => setSongTitle(e.target.value)}
+                    placeholder="e.g. Summer Breeze (leave blank to use file name)"
+                    className="bg-[#121212] border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              )}
+
+              {/* Audio Files Input */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-gray-300">Audio Files (.mp3, .wav) - Select multiple songs</label>
-                  {songFiles.length > 0 && (
-                    <span className="text-xs text-emerald-400 font-medium">
-                      {songFiles.length} file(s)
+                  <label className="text-xs font-semibold text-gray-300">
+                    Audio Files (.mp3, .wav) - <span className="text-emerald-400">Select multiple songs at once</span>
+                  </label>
+                  {songTracks.length > 0 && (
+                    <span className="text-xs text-emerald-400 font-bold">
+                      {songTracks.length} track(s) selected
                     </span>
                   )}
                 </div>
@@ -225,16 +319,55 @@ const AlbumDetails: React.FC = () => {
                   type="file"
                   accept="audio/*"
                   multiple
-                  required
-                  onChange={(e) => setSongFiles(Array.from(e.target.files || []))}
+                  required={songTracks.length === 0}
+                  onChange={handleFilesChange}
                   className="bg-[#121212] border border-white/10 rounded-xl p-2 text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500 file:text-black cursor-pointer"
                 />
               </div>
 
-              {uploadProgress && (
-                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 p-2.5 rounded-xl text-xs flex items-center justify-between font-medium">
-                  <span>Uploading track {uploadProgress.current} of {uploadProgress.total}...</span>
-                  <span>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+              {/* Selected Files Badge List with Editable Titles */}
+              {songTracks.length > 0 && (
+                <div className="bg-[#121212] p-3 rounded-xl border border-white/10 flex flex-col gap-2">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                    <span className="text-[11px] font-bold text-gray-300">
+                      Tracks to upload ({songTracks.length}):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSongTracks([])}
+                      className="text-[11px] text-red-400 hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+                    {songTracks.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 bg-zinc-900/80 p-2 rounded-lg border border-white/5"
+                      >
+                        <span className="text-[10px] font-bold text-gray-500 w-4 text-center">{idx + 1}</span>
+                        <input
+                          type="text"
+                          value={item.title}
+                          onChange={(e) => handleUpdateTrackTitle(idx, e.target.value)}
+                          placeholder="Song title"
+                          className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        />
+                        <span className="text-gray-500 text-[10px]">
+                          {(item.file.size / (1024 * 1024)).toFixed(2)} MB
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTrack(idx)}
+                          className="text-gray-500 hover:text-red-400 p-0.5"
+                          title="Remove"
+                        >
+                          <FiX className="text-xs" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -248,10 +381,13 @@ const AlbumDetails: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={uploading}
+                  disabled={uploading || songTracks.length === 0}
                   className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
-                  <FiUpload /> {uploading ? `Uploading (${uploadProgress ? `${uploadProgress.current}/${uploadProgress.total}` : "Processing..."})` : `Upload ${songFiles.length > 1 ? `${songFiles.length} Songs` : "Song"}`}
+                  <FiUpload />{" "}
+                  {uploading
+                    ? "Uploading Songs..."
+                    : `Upload ${songTracks.length > 1 ? `${songTracks.length} Songs` : "Song"}`}
                 </button>
               </div>
             </form>
